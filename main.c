@@ -23,7 +23,7 @@ typedef struct MemMetadata {
 } MemMetadata;
 
 
-static MemMetadata *head = NULL;
+static MemMetadata* head = NULL;
 
 
 void printMemBlocks(MemMetadata* head) {
@@ -34,13 +34,13 @@ void printMemBlocks(MemMetadata* head) {
 }
 
 
-MemMetadata *requestMoreMemory(MemMetadata* lastChunk, size_t size){
+MemMetadata* requestMoreMemory(MemMetadata* lastChunk, size_t size){
     void* brkPoint = sbrk(0);
 
     size_t requestedMemory = MULTIPLIER * (size + sizeof(MemMetadata));
     assert(sbrk(requestedMemory) != (void*) -1 && "Could not alloc more memory");
 
-    MemMetadata *newChunk = brkPoint;
+    MemMetadata* newChunk = brkPoint;
     newChunk->size = requestedMemory - sizeof(MemMetadata);
     newChunk->status = AVAILABLE;
     newChunk->prev = lastChunk;
@@ -93,7 +93,7 @@ MemMetadata* findChunk(MemMetadata* head, size_t size){
 
 
 void* bbmalloc(size_t size) {
-    MemMetadata *chunk;
+    MemMetadata* chunk;
 
     // first call to bbmalloc
     if (head == NULL) {
