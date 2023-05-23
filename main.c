@@ -91,6 +91,55 @@ MemMetadata* findChunk(MemMetadata* head, size_t size){
     return current;
 }
 
+void mergeChunkPrev(MemMetadata* chunk){
+    assert(chunk != NULL && "Cannot merge a NULL chunk");
+
+    if (chunk->prev != NULL &&
+            (chunk->prev->status == AVAILABLE || chunk->prev->status == TOO_SMALL)) {
+
+        // increment the size of the merged chunk
+        chunk->prev->size += (chunk->size + sizeof(MemMetadata));
+
+        // remove the freed chunk from the linked list
+        MemMetadata* temp = chunk->next;
+        chunk->prev->next = temp;
+        if (chunk->next != NULL)
+            chunk->next->prev = chunk->prev;
+    }
+}
+
+void mergeChunkNext(MemMetadata* chunk){
+    assert(chunk != NULL && "Cannot merge a NULL chunk");
+
+    if (chunk->next != NULL &&
+            (chunk->next->status == AVAILABLE || chunk->next->status == TOO_SMALL)) {
+
+        // increment the size of the merged chunk
+        chunk->size += (chunk->next->size + sizeof(MemMetadata));
+
+        // remove the freed chunk from the linked list
+        MemMetadata* temp = chunk->next;
+        chunk->next = chunk->next->next;
+        if (temp->next != NULL)
+            temp->next->prev = chunk;
+    }
+}
+
+void bbfree(void* ptr){
+    assert(ptr >= (void*) head && ptr <= sbrk(0) &&
+            "Attempted to free memory outside of allocated region");
+
+    // pointers point to the beginning of the data itself, so the related
+    // metadata is directly behind it hence the pointer arithmetic below
+    // FIXME: the program segfaults when chunkToFree is accessed
+    MemMetadata* chunkToFree = (MemMetadata *) ptr - sizeof(MemMetadata);
+    chunkToFree->status = AVAILABLE;
+
+    // merge adjacent chunks that are either available or too small
+    mergeChunkPrev(chunkToFree);
+    mergeChunkNext(chunkToFree);
+}
+
 
 void* bbmalloc(size_t size) {
     MemMetadata* chunk;
