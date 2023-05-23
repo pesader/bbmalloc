@@ -43,7 +43,7 @@ void printMemBlocks(MemMetadata* head) {
 void splitChunk(MemMetadata* chunk, size_t size){
     assert(chunk != NULL && "Cannot split a NULL chunk");
 
-    MemMetadata* newChunk = (MemMetadata*) chunk->memBegin + size;
+    MemMetadata* newChunk = chunk->memBegin + size;
     newChunk->size = chunk->size - (size + STRUCT_SIZE);
     newChunk->status = chunk->size < MIN_SIZE ? TOO_SMALL : AVAILABLE;
     newChunk->prev = chunk;
