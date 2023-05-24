@@ -39,7 +39,6 @@ void printMemBlocks(MemMetadata* head) {
     }
 }
 
-
 void splitChunk(MemMetadata* chunk, size_t size){
     assert(chunk != NULL && "Cannot split a NULL chunk");
 
@@ -56,7 +55,6 @@ void splitChunk(MemMetadata* chunk, size_t size){
     chunk->next = newChunk;
 
 }
-
 
 MemMetadata* requestMoreMemory(MemMetadata* lastChunk, size_t size){
     void* brkPoint = sbrk(0);
@@ -116,8 +114,9 @@ void* bbmalloc(size_t size) {
 void mergeChunkPrev(MemMetadata* chunk){
     assert(chunk != NULL && "Cannot merge a NULL chunk");
 
-    if (chunk->prev != NULL &&
-            (chunk->prev->status == AVAILABLE || chunk->prev->status == TOO_SMALL)) {
+    if (chunk->prev != NULL && chunk->prev->status != UNAVAILABLE) {
+
+        printf("Merging with prev\n");
 
         // increment the size of the merged chunk
         chunk->prev->size += (chunk->size + STRUCT_SIZE);
@@ -133,8 +132,8 @@ void mergeChunkPrev(MemMetadata* chunk){
 void mergeChunkNext(MemMetadata* chunk){
     assert(chunk != NULL && "Cannot merge a NULL chunk");
 
-    if (chunk->next != NULL &&
-            (chunk->next->status == AVAILABLE || chunk->next->status == TOO_SMALL)) {
+    if (chunk->next != NULL && chunk->next->status != UNAVAILABLE) {
+        printf("Merging with next\n");
 
         // increment the size of the merged chunk
         chunk->size += (chunk->next->size + STRUCT_SIZE);
@@ -153,41 +152,50 @@ void bbfree(void* ptr){
 
     // pointers point to the beginning of the data itself, so the related
     // metadata is directly behind it hence the pointer arithmetic below
-    // FIXME: the program segfaults when chunkToFree is accessed
     MemMetadata* chunkToFree = ptr - STRUCT_SIZE;
     chunkToFree->status = AVAILABLE;
-    printf("size: %d\n", chunkToFree->size);
 
-//    // merge adjacent chunks that are either available or too small
-//    mergeChunkPrev(chunkToFree);
-//    mergeChunkNext(chunkToFree);
+    // merge adjacent chunks that are either available or too small
+    mergeChunkNext(chunkToFree);
+    mergeChunkPrev(chunkToFree);
 }
 
 
 int main(int argc, char* argv[]) {
-//    int *a[12];
+//    int *a1[12];
 //    for (int i = 0; i != 12; i++) {
-//        a[i] = bbmalloc(sizeof(int));
-//        *(a[i]) = i;
-//        printf("a\n");
+//        a1[i] = bbmalloc(sizeof(int));
+//        *(a1[i]) = i;
+////        printf("a\n");
 ////        printf("sbrk: %p\n", sbrk(0));
 ////        printf("head: %p\n", globalHead);
 //
 //    }
+//    printMemBlocks(globalHead);
+
     int *a = (int *) bbmalloc(3*sizeof(int));
     a[0] = 1;
     a[1] = 8;
     a[2] = 3;
-    printMemBlocks(globalHead);
     int *b = (int *) bbmalloc(sizeof(int));
 
 //    printMemBlocks(globalHead);
-//    bbfree(a);
 
     double* k = (double *) bbmalloc(sizeof(double));
-//    bbfree(k);
-//    bbfree(a);
-//    bbfree(b);
+    printMemBlocks(globalHead);
+
+    printf("Freeing a:\n");
+    bbfree(a);
+    printf("Freeing k:\n");
+    bbfree(k);
+    printMemBlocks(globalHead);
+
+    printf("Freeing b:\n");
+    bbfree(b);
+    printf("\n");
+    printMemBlocks(globalHead);
+
+
 
     return 0;
 }
