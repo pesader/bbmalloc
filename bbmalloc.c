@@ -4,7 +4,7 @@ static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 
 
 typedef enum {
-    AVAILABLE, TOO_SMALL, UNAVAILABLE,
+    AVAILABLE, UNAVAILABLE,
 } MemStatus;
 
 
@@ -38,7 +38,7 @@ void splitChunk(MemMetadata* chunk, size_t size){
 
     MemMetadata* newChunk = (void *) chunk + sizeof(MemMetadata) + size;
     newChunk->size = chunk->size - (size + sizeof(MemMetadata));
-    newChunk->status = chunk->size < MIN_SIZE ? TOO_SMALL : AVAILABLE;
+    newChunk->status = AVAILABLE;
     newChunk->prev = chunk;
     newChunk->next = chunk->next;
 
@@ -110,7 +110,7 @@ void* bbmalloc(size_t size) {
         globalHead = requestMoreMemory(globalHead, size);
         chunk = globalHead;
     }
-        // next calls to bbmalloc
+    // next calls to bbmalloc
     else chunk = findChunk(globalHead, size);
 
     pthread_mutex_unlock(&lock);
