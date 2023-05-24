@@ -71,6 +71,7 @@ MemMetadata* requestMoreMemory(MemMetadata* lastChunk, size_t size){
         lastChunk->next = newChunk;
 
     splitChunk(newChunk, size);
+    lastChunk->status = UNAVAILABLE;
 
 
     return newChunk;
