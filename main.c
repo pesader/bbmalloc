@@ -1,12 +1,10 @@
 #include <stdio.h>
-#include <stdlib.h>
 #include <unistd.h>
 #include <assert.h>
 #include <pthread.h>
 
 #define MULTIPLIER 10
 #define MIN_SIZE 1
-#define STRUCT_SIZE 24
 pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 
 
@@ -20,7 +18,6 @@ typedef struct MemMetadata {
     MemStatus status;
     struct MemMetadata* prev;
     struct MemMetadata* next;
-    char memBegin[1];
 } MemMetadata;
 
 
@@ -29,6 +26,7 @@ static MemMetadata* globalHead = NULL;
 
 void printMemBlocks(MemMetadata* head) {
     int count = 0;
+    printf("\nPRINTING MEM BLOCKS:\n");
     for (MemMetadata* current = head; current != NULL; current = current->next){
         printf("Chunk %d:\n", count);
         printf("metadata at: %p\n", current);
@@ -42,8 +40,8 @@ void printMemBlocks(MemMetadata* head) {
 void splitChunk(MemMetadata* chunk, size_t size){
     assert(chunk != NULL && "Cannot split a NULL chunk");
 
-    MemMetadata* newChunk = chunk->memBegin + size;
-    newChunk->size = chunk->size - (size + STRUCT_SIZE);
+    MemMetadata* newChunk = (void *) chunk + sizeof(MemMetadata) + size;
+    newChunk->size = chunk->size - (size + sizeof(MemMetadata));
     newChunk->status = chunk->size < MIN_SIZE ? TOO_SMALL : AVAILABLE;
     newChunk->prev = chunk;
     newChunk->next = chunk->next;
@@ -59,12 +57,12 @@ void splitChunk(MemMetadata* chunk, size_t size){
 MemMetadata* requestMoreMemory(MemMetadata* lastChunk, size_t size){
     void* brkPoint = sbrk(0);
 
-    size_t requestedMemory = MULTIPLIER * (size + STRUCT_SIZE);
+    size_t requestedMemory = MULTIPLIER * (size + sizeof(MemMetadata));
     assert(sbrk(requestedMemory) != (void*) -1 && "Could not alloc more memory");
 
     if (lastChunk != NULL && lastChunk->size == 0) lastChunk = lastChunk->prev;
     MemMetadata* newChunk = brkPoint;
-    newChunk->size = requestedMemory - STRUCT_SIZE;
+    newChunk->size = requestedMemory - sizeof(MemMetadata);
     newChunk->status = AVAILABLE;
     newChunk->prev = lastChunk;
     newChunk->next = NULL;
@@ -85,7 +83,7 @@ int isLastChunk(MemMetadata* chunk){
 MemMetadata* findChunk(MemMetadata* head, size_t size){
     MemMetadata* current;
     for (current = head; current != NULL; current = current->next){
-        if (current-> status == AVAILABLE && current->size >= size + STRUCT_SIZE){
+        if (current-> status == AVAILABLE && current->size >= size + sizeof(MemMetadata)){
             splitChunk(current, size);
             break; // first fit
         }
@@ -108,7 +106,7 @@ void* bbmalloc(size_t size) {
         // next calls to bbmalloc
     else chunk = findChunk(globalHead, size);
 
-    return chunk->memBegin;
+    return (void *) chunk + sizeof(MemMetadata);
 }
 
 void mergeChunkPrev(MemMetadata* chunk){
@@ -116,10 +114,8 @@ void mergeChunkPrev(MemMetadata* chunk){
 
     if (chunk->prev != NULL && chunk->prev->status != UNAVAILABLE) {
 
-        printf("Merging with prev\n");
-
         // increment the size of the merged chunk
-        chunk->prev->size += (chunk->size + STRUCT_SIZE);
+        chunk->prev->size += (chunk->size + sizeof(MemMetadata));
 
         // remove the freed chunk from the linked list
         MemMetadata* temp = chunk->next;
@@ -133,10 +129,9 @@ void mergeChunkNext(MemMetadata* chunk){
     assert(chunk != NULL && "Cannot merge a NULL chunk");
 
     if (chunk->next != NULL && chunk->next->status != UNAVAILABLE) {
-        printf("Merging with next\n");
 
         // increment the size of the merged chunk
-        chunk->size += (chunk->next->size + STRUCT_SIZE);
+        chunk->size += (chunk->next->size + sizeof(MemMetadata));
 
         // remove the freed chunk from the linked list
         MemMetadata* temp = chunk->next;
@@ -152,7 +147,7 @@ void bbfree(void* ptr){
 
     // pointers point to the beginning of the data itself, so the related
     // metadata is directly behind it hence the pointer arithmetic below
-    MemMetadata* chunkToFree = ptr - STRUCT_SIZE;
+    MemMetadata* chunkToFree = ptr - sizeof(MemMetadata);
     chunkToFree->status = AVAILABLE;
 
     // merge adjacent chunks that are either available or too small
@@ -184,16 +179,15 @@ int main(int argc, char* argv[]) {
     double* k = (double *) bbmalloc(sizeof(double));
     printMemBlocks(globalHead);
 
-    printf("Freeing a:\n");
     bbfree(a);
-    printf("Freeing k:\n");
-    bbfree(k);
+    bbfree(b);
+
     printMemBlocks(globalHead);
 
-    printf("Freeing b:\n");
-    bbfree(b);
+    bbfree(k);
     printf("\n");
     printMemBlocks(globalHead);
+
 
 
 
