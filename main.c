@@ -3,7 +3,7 @@
 #include <assert.h>
 #include <pthread.h>
 
-#define MULTIPLIER 10
+#define MULTIPLIER 4
 #define MIN_SIZE 1
 pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 
@@ -32,7 +32,8 @@ void printMemBlocks(MemMetadata* head) {
         printf("metadata at: %p\n", current);
         printf("size: %d\n", current->size);
         printf("MemStatus: %d\n", current->status);
-        printf("Next: %p\n\n", current->next);
+        printf("Next: %p\n", current->next);
+        printf("First content as int: %d\n\n", *((int *) ((void *) current + sizeof(MemMetadata))));
         count++;
     }
 }
@@ -69,7 +70,6 @@ MemMetadata* requestMoreMemory(MemMetadata* lastChunk, size_t size){
 
     if (lastChunk != NULL){
         lastChunk->next = newChunk;
-        lastChunk->status = UNAVAILABLE;
     }
 
     splitChunk(newChunk, size);
@@ -89,20 +89,20 @@ MemMetadata* findChunk(MemMetadata* head, size_t size){
         if (current->status == AVAILABLE && current->size >= size){
             // Keep the linked list as short as possible by not adding nodes
             // that are smaller than the minimum allocation size
-            if (current->size - (size + sizeof(MemMetadata)) >= MIN_SIZE) {
+            if ((int) (current->size - (size + sizeof(MemMetadata))) >= MIN_SIZE) {
                 splitChunk(current, size);
-                /* printf("entrou no if\n"); */
             }
             else {
                 current->status = UNAVAILABLE;
-                /* printf("entrou no else\n"); */
             }
             break; // first fit
         }
         // if the last chunk is not large enough to store the size requested by
         // the user, request more memory. This will add a new chunk to the
         // linked list, which will be allocated in the next iteration
-        if (isLastChunk(current)) current = requestMoreMemory(current, size);
+        if (isLastChunk(current))
+            return requestMoreMemory(current, size);
+
     }
     return current;
 }
