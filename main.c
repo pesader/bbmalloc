@@ -85,8 +85,18 @@ int isLastChunk(MemMetadata* chunk){
 MemMetadata* findChunk(MemMetadata* head, size_t size){
     MemMetadata* current;
     for (current = head; current != NULL; current = current->next){
-        if (current-> status == AVAILABLE && current->size >= size + sizeof(MemMetadata)){
-            splitChunk(current, size);
+        // TODO: use worst fit instead of first fit
+        if (current->status == AVAILABLE && current->size >= size){
+            // Keep the linked list as short as possible by not adding nodes
+            // that are smaller than the minimum allocation size
+            if (current->size - (size + sizeof(MemMetadata)) >= MIN_SIZE) {
+                splitChunk(current, size);
+                /* printf("entrou no if\n"); */
+            }
+            else {
+                current->status = UNAVAILABLE;
+                /* printf("entrou no else\n"); */
+            }
             break; // first fit
         }
         // if the last chunk is not large enough to store the size requested by
@@ -159,39 +169,11 @@ void bbfree(void* ptr){
 
 
 int main(int argc, char* argv[]) {
-//    int *a1[12];
-//    for (int i = 0; i != 12; i++) {
-//        a1[i] = bbmalloc(sizeof(int));
-//        *(a1[i]) = i;
-////        printf("a\n");
-////        printf("sbrk: %p\n", sbrk(0));
-////        printf("head: %p\n", globalHead);
-//
-//    }
-//    printMemBlocks(globalHead);
-
-    int *a = (int *) bbmalloc(3*sizeof(int));
-    a[0] = 1;
-    a[1] = 8;
-    a[2] = 3;
-    int *b = (int *) bbmalloc(sizeof(int));
-
-//    printMemBlocks(globalHead);
-
-    double* k = (double *) bbmalloc(sizeof(double));
+    int *a1[15];
+    for (int i = 0; i != 15; i++) {
+        a1[i] = bbmalloc(sizeof(int));
+        *(a1[i]) = i;
+    }
     printMemBlocks(globalHead);
-
-    bbfree(a);
-    bbfree(b);
-
-    printMemBlocks(globalHead);
-
-    bbfree(k);
-    printf("\n");
-    printMemBlocks(globalHead);
-
-
-
-
     return 0;
 }
