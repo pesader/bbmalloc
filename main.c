@@ -67,11 +67,12 @@ MemMetadata* requestMoreMemory(MemMetadata* lastChunk, size_t size){
     newChunk->prev = lastChunk;
     newChunk->next = NULL;
 
-    if (lastChunk != NULL)
+    if (lastChunk != NULL){
         lastChunk->next = newChunk;
+        lastChunk->status = UNAVAILABLE;
+    }
 
     splitChunk(newChunk, size);
-    lastChunk->status = UNAVAILABLE;
 
 
     return newChunk;
