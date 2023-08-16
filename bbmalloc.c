@@ -138,6 +138,7 @@ void mergeChunkPrev(MemMetadata* chunk){
 
 void mergeChunkNext(MemMetadata* chunk){
     assert(chunk != NULL && "Cannot merge a NULL chunk");
+    pthread_mutex_lock(&lock);
 
     if (chunk->next != NULL && chunk->next->status != UNAVAILABLE) {
 
@@ -150,6 +151,8 @@ void mergeChunkNext(MemMetadata* chunk){
         if (temp->next != NULL)
             temp->next->prev = chunk;
     }
+    pthread_mutex_unlock(&lock);
+
 }
 
 void bbfree(void* ptr){
